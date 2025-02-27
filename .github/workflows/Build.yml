@@ -38,10 +38,10 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build and push Docker image
-      working-directory: /
+      working-directory: ./
       run: docker build -t ovrb/cybershield:latest .
 
     - name: Push Docker Image
-      working-directory: /
+      working-directory: ./
       run: docker push ovrb/cybershield:latest
     #- run: npm test
