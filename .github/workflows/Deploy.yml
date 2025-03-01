@@ -1,39 +1,35 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-name: Deploy Node.js CI
+name: Deploy to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_run:
     workflows: ["Build Node.js CI"]
     types:
-      - completed 
+      - completed
 
 jobs:
-  build:
-
+  deploy:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [20.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Install Docker Compose
-      run: sudo apt-get update && sudo apt-get install -y docker-compose
-      
-    - name: Deploy Services
+    - name: Set up SSH
       run: |
-        docker-compose -f ./docker-compose.yml pull
-        docker-compose -f ./docker-compose.yml down
-        docker-compose -f ./docker-compose.yml up -d
+        mkdir -p ~/.ssh/
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
+        chmod 400 ~/.ssh/ec2-key.pem
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh -i ~/.ssh/ec2-key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
+          docker pull ovrb/cybershield:latest
+          docker stop cybershield || true
+          docker rm cybershield || true
+          docker run -d --name cybershield -p 4000:4000 ovrb/cybershield:latest
+        EOF
