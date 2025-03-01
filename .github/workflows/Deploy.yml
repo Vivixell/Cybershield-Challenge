@@ -25,11 +25,39 @@ jobs:
         chmod 400 ~/.ssh/ec2-key.pem
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy to EC2
+    - name: Deploy to EC2 with Docker Compose
       run: |
         ssh -i ~/.ssh/ec2-key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-          docker pull ovrb/cybershield:latest
-          docker stop cybershield || true
-          docker rm cybershield || true
-          docker run -d --name cybershield -p 4000:4000 ovrb/cybershield:latest
-        EOF
+          mkdir -p ~/app
+          cd ~/app
+          echo "${{ github.sha }}" > version.txt
+          cat << 'DOCKER_COMPOSE' > docker-compose.yml
+          version: '3'
+          services:
+            cyber-server:
+              image: ovrb/cybershield:latest
+              ports:
+                - "4000:4000"
+            nginx:
+              image: nginx:latest
+              ports:
+                - "80:80"
+              volumes:
+                - ./nginx.conf:/etc/nginx/nginx.conf
+        DOCKER_COMPOSE
+        echo "events {}" > nginx.conf
+        echo "http {" >> nginx.conf
+        echo "  server {" >> nginx.conf
+        echo "    listen 80;" >> nginx.conf
+        echo "    location / {" >> nginx.conf
+        echo "      proxy_pass http://cyber-server:4000;" >> nginx.conf
+        echo "      proxy_set_header Host \$host;" >> nginx.conf
+        echo "      proxy_set_header X-Real-IP \$remote_addr;" >> nginx.conf
+        echo "    }" >> nginx.conf
+        echo "  }" >> nginx.conf
+        echo "}" >> nginx.conf
+        docker-compose down || true
+        docker-compose pull
+        docker-compose up -d
+      EOF
+  

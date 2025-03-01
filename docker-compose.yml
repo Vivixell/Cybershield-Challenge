@@ -1,19 +1,17 @@
 version: '3'
-
 services:
   cyber-server:
-    build: 
-     context: .
-     dockerfile: Dockerfile
-    
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "4000:4000"
-    
-  # nginx:
-  #   image: nginx:latest
-  #   container_name: nginx
-  #   depends_on:
-  #     - cyber-server
-  #   ports:
-  #     - "80:80"
-  #     - "433:433"
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    depends_on:
+      - cyber-server
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
