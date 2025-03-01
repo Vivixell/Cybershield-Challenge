@@ -31,6 +31,8 @@ jobs:
           mkdir -p ~/app && \
           cd ~/app && \
           echo "${{ github.sha }}" > version.txt && \
+          docker stop cybershield || true && \
+          docker rm cybershield || true && \
           echo "version: \"3\"" > docker-compose.yml && \
           echo "services:" >> docker-compose.yml && \
           echo "  cyber-server:" >> docker-compose.yml && \
